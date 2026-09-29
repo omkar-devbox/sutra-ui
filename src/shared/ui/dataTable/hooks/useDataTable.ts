@@ -320,9 +320,11 @@ export function useDataTable<T>(props: DataTableProps<T>) {
     sortedData, // Export sortedData for virtualization if needed
     visibleColumns,
     columnWidths,
-    totalCount: (props.manualPagination || props.pagination)
-      ? (props.pagination?.total ?? props.totalCount ?? 0)
-      : sortedData.length,
+    totalCount: props.manualPagination
+      ? (props.totalCount ?? 0)
+      : props.pagination && typeof props.pagination.total === "number"
+      ? props.pagination.total
+      : (sortedData?.length ?? 0),
     actions: {
       ...actions,
       toggleSelection: handleToggleSelection,

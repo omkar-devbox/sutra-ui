@@ -18,10 +18,12 @@ interface DataTablePaginationProps {
 
 export const DataTablePagination: FC<DataTablePaginationProps> = memo(
   ({ pagination, totalCount, onPageChange, onPageSizeChange }) => {
-    const { pageIndex, pageSize } = pagination;
-    const pageCount = Math.ceil(totalCount / pageSize);
-    const start = pageIndex * pageSize + 1;
-    const end = Math.min((pageIndex + 1) * pageSize, totalCount);
+    const { pageIndex = 0, pageSize = 10 } = pagination || {};
+    const safeTotalCount = typeof totalCount === "number" && !isNaN(totalCount) ? totalCount : 0;
+    const safePageSize = typeof pageSize === "number" && pageSize > 0 ? pageSize : 10;
+    const pageCount = Math.max(1, Math.ceil(safeTotalCount / safePageSize));
+    const start = safeTotalCount > 0 ? pageIndex * safePageSize + 1 : 0;
+    const end = Math.min((pageIndex + 1) * safePageSize, safeTotalCount);
 
     const [localPage, setLocalPage] = useState<string>((pageIndex + 1).toString());
 
@@ -50,7 +52,7 @@ export const DataTablePagination: FC<DataTablePaginationProps> = memo(
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
             <select
-              value={pageSize}
+              value={safePageSize}
               onChange={(e) => onPageSizeChange(Number(e.target.value))}
               className={styles.paginationSelect}
             >
@@ -64,10 +66,10 @@ export const DataTablePagination: FC<DataTablePaginationProps> = memo(
           <div>
             Showing{" "}
             <span className={styles.paginationText}>
-              {totalCount > 0 ? start : 0}
+              {start}
             </span>{" "}
             to <span className={styles.paginationText}>{end}</span> of{" "}
-            <span className={styles.paginationText}>{totalCount}</span>
+            <span className={styles.paginationText}>{safeTotalCount}</span>
           </div>
 
           <div className="flex items-center gap-2 border-l border-dt-border-color pl-6 ml-1">

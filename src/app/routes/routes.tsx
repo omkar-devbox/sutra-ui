@@ -6,6 +6,12 @@ import { SIDEBAR_MENU } from "../menu/menuItems";
 
 // Lazy loading page components
 const ExcelDashboard = lazy(() => import("@/features/excel/ExcelDashboard"));
+const DataTableDemoPage = lazy(
+  () => import("@/features/dataTableDemo/DataTableDemoPage")
+);
+const FormFieldDemoPage = lazy(
+  () => import("@/features/formFieldDemo/FormFieldDemoPage")
+);
 const GenericPage = lazy(() => import("@/shared/pages/GenericPage/GenericPage"));
 const UnauthorizedPage = lazy(() =>
   import("@/shared/pages/unauthorized/UnauthorizedPage")
@@ -67,17 +73,47 @@ export function AppRouter() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Dashboard */}
+        {/* Dashboard / DataTable Showcase */}
         <Route
           path="/"
           element={
-            <MainLayout pageTitle="Excel Intelligence & AI Modifier" pageSubtitle="Deep openpyxl analysis & LLM automation">
-              <ExcelDashboard />
+            <MainLayout pageTitle="DataTable Showcase" pageSubtitle="Full-featured enterprise tabular data engine">
+              <DataTableDemoPage />
             </MainLayout>
           }
         />
         <Route
           path="/dashboard"
+          element={
+            <MainLayout pageTitle="DataTable Showcase" pageSubtitle="Full-featured enterprise tabular data engine">
+              <DataTableDemoPage />
+            </MainLayout>
+          }
+        />
+
+        {/* Dedicated Route */}
+        <Route
+          path="/datatable-demo"
+          element={
+            <MainLayout pageTitle="DataTable Showcase" pageSubtitle="Full-featured enterprise tabular data engine">
+              <DataTableDemoPage />
+            </MainLayout>
+          }
+        />
+
+        {/* Form Fields Showcase */}
+        <Route
+          path="/form-demo"
+          element={
+            <MainLayout pageTitle="Form Field & Layout Showcase" pageSubtitle="Full suite of form controls, responsive layouts & dynamic JSON schemas">
+              <FormFieldDemoPage />
+            </MainLayout>
+          }
+        />
+
+        {/* Excel Portal */}
+        <Route
+          path="/excel"
           element={
             <MainLayout pageTitle="Excel Intelligence & AI Modifier" pageSubtitle="Deep openpyxl analysis & LLM automation">
               <ExcelDashboard />

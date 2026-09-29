@@ -96,6 +96,8 @@ interface BaseFormFieldProps<T, V = unknown> extends FieldSecurityConfig {
 
   fullWidth?: boolean;
   fieldSize?: "sm" | "md" | "lg";
+  colSpan?: 1 | 2 | 3 | 4 | "full";
+  layout?: "vertical" | "horizontal";
 
   wrapperClassName?: string;
 

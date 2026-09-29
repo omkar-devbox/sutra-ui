@@ -39,6 +39,8 @@ export const FormField = forwardRef<
     disabled: initialDisabled,
     styleConfig,
     fieldSize,
+    colSpan,
+    layout,
     isPII,
     // RBAC Security options
     roles,
@@ -226,6 +228,8 @@ export const FormField = forwardRef<
       required={required}
       disabled={disabled}
       fullWidth={fullWidth}
+      colSpan={colSpan}
+      layout={layout}
       wrapperClassName={wrapperClassName}
       hideLabel={type === "checkbox"}
       styleConfig={styleConfig}

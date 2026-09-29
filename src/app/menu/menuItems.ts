@@ -17,6 +17,22 @@ export const SIDEBAR_MENU: MenuSection[] = [
         path: "/",
         tooltip: "Overview & Analytics Dashboard",
       },
+      {
+        id: "1-2",
+        key: "datatable-demo",
+        label: "DataTable Demo",
+        icon: LayoutDashboard,
+        path: "/datatable-demo",
+        tooltip: "Comprehensive DataTable Demo with all features",
+      },
+      {
+        id: "1-3",
+        key: "form-demo",
+        label: "Form Fields Demo",
+        icon: LayoutDashboard,
+        path: "/form-demo",
+        tooltip: "Comprehensive FormField & Layout Showcase",
+      },
     ],
   },
 ];

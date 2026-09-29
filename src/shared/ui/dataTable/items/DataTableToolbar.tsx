@@ -106,67 +106,65 @@ export const DataTableToolbar: FC<DataTableToolbarProps> = memo(
           </div>
 
           {/* ── Right Side: Actions ────────────────────────────────────────────── */}
-          {layout !== "table" && (
-            <div className="flex items-center gap-2">
-              {layout !== "card" && onLayoutChange && (
-                <div className={styles.toolbarActionContainer}>
-                  <button
-                    type="button"
-                    onClick={() => onLayoutChange("table")}
-                    title="Table View"
-                    className={styles.toolbarActionBtn(isTable)}
-                  >
-                    <Table size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onLayoutChange("card")}
-                    title="Card View"
-                    className={styles.toolbarActionBtn(isCard)}
-                  >
-                    <LayoutGrid size={16} />
-                  </button>
-                </div>
-              )}
-
-              {layout === "card" && onCardOrientationChange && (
-                <div className={styles.toolbarActionContainer}>
-                  <button
-                    type="button"
-                    onClick={() => onCardOrientationChange("vertical")}
-                    title="Vertical Grid"
-                    className={styles.toolbarActionBtn(
-                      cardOrientation === "vertical",
-                    )}
-                  >
-                    <Grid size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onCardOrientationChange("horizontal")}
-                    title="Horizontal List"
-                    className={styles.toolbarActionBtn(
-                      cardOrientation === "horizontal",
-                    )}
-                  >
-                    <Rows size={16} />
-                  </button>
-                </div>
-              )}
-
-              {onReset && (
+          <div className="flex items-center gap-2">
+            {onLayoutChange && (
+              <div className={styles.toolbarActionContainer}>
                 <button
                   type="button"
-                  onClick={onReset}
-                  title="Reset table state"
-                  className={styles.toolbarResetBtn}
+                  onClick={() => onLayoutChange("table")}
+                  title="Table View"
+                  className={styles.toolbarActionBtn(!isCard)}
                 >
-                  <RotateCcw size={16} />
-                  {hasValue && <span>Reset</span>}
+                  <Table size={16} />
                 </button>
-              )}
-            </div>
-          )}
+                <button
+                  type="button"
+                  onClick={() => onLayoutChange("card")}
+                  title="Card View"
+                  className={styles.toolbarActionBtn(isCard)}
+                >
+                  <LayoutGrid size={16} />
+                </button>
+              </div>
+            )}
+
+            {isCard && onCardOrientationChange && (
+              <div className={styles.toolbarActionContainer}>
+                <button
+                  type="button"
+                  onClick={() => onCardOrientationChange("vertical")}
+                  title="Vertical Grid"
+                  className={styles.toolbarActionBtn(
+                    cardOrientation === "vertical",
+                  )}
+                >
+                  <Grid size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onCardOrientationChange("horizontal")}
+                  title="Horizontal List"
+                  className={styles.toolbarActionBtn(
+                    cardOrientation === "horizontal",
+                  )}
+                >
+                  <Rows size={16} />
+                </button>
+              </div>
+            )}
+
+            {onReset && (
+              <button
+                type="button"
+                onClick={onReset}
+                title="Reset table state"
+                className={styles.toolbarResetBtn}
+              >
+                <RotateCcw size={16} />
+                {hasValue && <span>Reset</span>}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
