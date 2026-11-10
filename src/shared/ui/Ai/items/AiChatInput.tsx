@@ -14,6 +14,12 @@ import {
 import type { AiChatInputProps } from "../types";
 
 // ----------------------------------------------------
+// Types and Models
+// ----------------------------------------------------
+
+export type { AiChatInputProps } from "../types";
+
+// ----------------------------------------------------
 // Component Implementation
 // ----------------------------------------------------
 

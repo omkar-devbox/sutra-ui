@@ -11,6 +11,12 @@ import { DEFAULT_COPY_FEEDBACK_DURATION_MS } from "../constant/ai.constant";
 import type { CodeBlockProps } from "../types";
 
 // ----------------------------------------------------
+// Types and Models
+// ----------------------------------------------------
+
+export type { CodeBlockProps } from "../types";
+
+// ----------------------------------------------------
 // Component Implementation
 // ----------------------------------------------------
 

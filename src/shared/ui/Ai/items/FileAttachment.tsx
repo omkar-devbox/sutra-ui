@@ -9,7 +9,13 @@ import { aiChatMessageStyles } from "../styles/aiSidebar.styles";
 import type { FileAttachmentProps } from "../types";
 
 // ----------------------------------------------------
-// Helper Functions
+// Types and Models
+// ----------------------------------------------------
+
+export type { FileAttachmentProps } from "../types";
+
+// ----------------------------------------------------
+// Error Handling and Helpers
 // ----------------------------------------------------
 
 /**

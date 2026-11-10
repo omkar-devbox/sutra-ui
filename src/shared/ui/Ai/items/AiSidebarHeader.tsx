@@ -9,6 +9,12 @@ import { aiSidebarHeaderStyles } from "../styles/aiSidebar.styles";
 import type { AiSidebarHeaderProps } from "../types";
 
 // ----------------------------------------------------
+// Types and Models
+// ----------------------------------------------------
+
+export type { AiSidebarHeaderProps } from "../types";
+
+// ----------------------------------------------------
 // Component Implementation
 // ----------------------------------------------------
 

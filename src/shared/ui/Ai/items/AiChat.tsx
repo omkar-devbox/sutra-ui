@@ -12,7 +12,13 @@ import { DEFAULT_SUGGESTIONS } from "../constant/ai.constant";
 import type { AiSuggestion, Attachment, AiChatProps } from "../types";
 
 // ----------------------------------------------------
-// Helpers
+// Types and Models
+// ----------------------------------------------------
+
+export type { AiChatProps } from "../types";
+
+// ----------------------------------------------------
+// Error Handling and Helpers
 // ----------------------------------------------------
 
 /**

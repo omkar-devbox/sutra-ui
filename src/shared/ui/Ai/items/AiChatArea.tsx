@@ -29,6 +29,12 @@ import type {
 } from "../types";
 
 // ----------------------------------------------------
+// Types and Models
+// ----------------------------------------------------
+
+export type { AiChatAreaProps } from "../types";
+
+// ----------------------------------------------------
 // Constants and Dynamic Configuration
 // ----------------------------------------------------
 
@@ -36,7 +42,7 @@ const VIRTUALIZER_OVERSCAN_COUNT = 5;
 const AUTO_SCROLL_PROXIMITY_THRESHOLD_PX = 160;
 
 // ----------------------------------------------------
-// Helper Functions
+// Error Handling and Helpers
 // ----------------------------------------------------
 
 /**
