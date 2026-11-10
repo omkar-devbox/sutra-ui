@@ -15,7 +15,7 @@ import type { CountBadgeProps } from "../types/badge.types";
 export type { CountBadgeProps } from "../types/badge.types";
 
 // ----------------------------------------------------
-// Helpers
+// Error Handling and Helpers
 // ----------------------------------------------------
 
 /**

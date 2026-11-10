@@ -58,6 +58,8 @@ export type {
   BadgeVariant,
   BadgeSize,
   BadgeStatus,
+  BadgeGroupGap,
+  BadgeTheme,
 } from "./types";
 
 // ----------------------------------------------------
