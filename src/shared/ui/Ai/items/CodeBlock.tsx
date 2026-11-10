@@ -2,17 +2,13 @@
 // Imports
 // ----------------------------------------------------
 
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React from "react";
 import { Check, Copy } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { aiCodeBlockStyles } from "../styles/aiSidebar.styles";
+import { useClipboardCopy } from "../hooks/useClipboardCopy";
+import { DEFAULT_COPY_FEEDBACK_DURATION_MS } from "../constant/ai.constant";
 import type { CodeBlockProps } from "../types";
-
-// ----------------------------------------------------
-// Constants and Dynamic Configuration
-// ----------------------------------------------------
-
-const DEFAULT_COPY_FEEDBACK_DURATION_MS = 2000;
 
 // ----------------------------------------------------
 // Component Implementation
@@ -25,42 +21,10 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
   styleConfig,
   className,
 }) => {
-  const [copied, setCopied] = useState<boolean>(false);
-  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // --------------------------------------------------
-  // Clipboard Copy & Feedback Management
-  // --------------------------------------------------
-
-  // Clean up any pending timeout when component unmounts
-  useEffect(() => {
-    return () => {
-      if (copyTimeoutRef.current) {
-        clearTimeout(copyTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  const copyToClipboard = useCallback(async () => {
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(value);
-        setCopied(true);
-
-        if (copyTimeoutRef.current) {
-          clearTimeout(copyTimeoutRef.current);
-        }
-
-        copyTimeoutRef.current = setTimeout(() => {
-          setCopied(false);
-          copyTimeoutRef.current = null;
-        }, DEFAULT_COPY_FEEDBACK_DURATION_MS);
-      }
-    } catch (err) {
-      console.warn("[CodeBlock] Copy to clipboard failed:", err);
-      setCopied(false);
-    }
-  }, [value]);
+  const { copied, copyToClipboard } = useClipboardCopy({
+    duration: DEFAULT_COPY_FEEDBACK_DURATION_MS,
+    onError: (err) => console.warn("[CodeBlock] Copy to clipboard failed:", err),
+  });
 
   const codeBlockStyles = styleConfig?.codeBlock;
 
@@ -88,7 +52,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
         {showCopyButton && (
           <button
-            onClick={copyToClipboard}
+            onClick={() => copyToClipboard(value)}
             type="button"
             aria-label={copied ? "Code copied to clipboard" : "Copy code snippet"}
             className={aiCodeBlockStyles.copyButton}

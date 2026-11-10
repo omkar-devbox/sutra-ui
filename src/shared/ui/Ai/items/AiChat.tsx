@@ -8,17 +8,12 @@ import { AiSidebarHeader } from "./AiSidebarHeader";
 import { AiChatArea } from "./AiChatArea";
 import { AiChatInput } from "./AiChatInput";
 import { useAiChat } from "../hooks/useAiChat";
+import { DEFAULT_SUGGESTIONS } from "../constant/ai.constant";
 import type { AiSuggestion, Attachment, AiChatProps } from "../types";
 
 // ----------------------------------------------------
-// Constants and Dynamic Configuration
+// Helpers
 // ----------------------------------------------------
-
-const DEFAULT_SUGGESTIONS: AiSuggestion[] = [
-  { id: "1", label: "Summarize this page", action: "summarize" },
-  { id: "2", label: "Write a React component", action: "code" },
-  { id: "3", label: "Explain key architectural concepts", action: "explain" },
-];
 
 /**
  * Creates unique ID for file attachments safely.

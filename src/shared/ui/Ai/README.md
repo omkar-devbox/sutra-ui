@@ -45,18 +45,35 @@ The AI module is engineered for seamless integration into enterprise dashboards,
 
 ## 🗺️ Module Directory Map
 
-- Main Entrypoint: [index.ts](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/index.ts)
-- Types & Interfaces: [types/index.ts](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/types/index.ts)
-- Custom Hook: [hooks/useAiChat.ts](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/hooks/useAiChat.ts)
-- Main Chat Container: [items/AiChat.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/AiChat.tsx)
-- Sidebar Wrapper: [items/AiSidebar.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/AiSidebar.tsx)
-- Chat Area & Empty State: [items/AiChatArea.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/AiChatArea.tsx)
-- Input & Action Bar: [items/AiChatInput.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/AiChatInput.tsx)
-- Header Bar: [items/AiSidebarHeader.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/AiSidebarHeader.tsx)
-- File Attachment: [items/FileAttachment.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/FileAttachment.tsx)
-- Code Block: [items/CodeBlock.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/CodeBlock.tsx)
-- Error Boundary: [items/AiErrorBoundary.tsx](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/items/AiErrorBoundary.tsx)
-- Styling Tokens: [styles/aiSidebar.styles.ts](file:///home/omkar/Documents/sutra-ui/src/shared/ui/Ai/styles/aiSidebar.styles.ts)
+```text
+src/shared/ui/Ai/
+├── index.ts                     # Unified public export barrel
+├── README.md                    # Complete AI module documentation
+├── constant/                    # Defaults, dimensions, and prompt constants
+│   ├── ai.constant.ts           # Max messages, widths, timeouts, default suggestions
+│   └── index.ts                 # Constant barrel export
+├── hooks/                       # Custom AI hooks
+│   ├── useAiChat.ts             # Conversational state & streaming simulation hook
+│   ├── useAiSidebarResize.ts    # Sidebar resize dragging, min/max limits & storage hook
+│   ├── useClipboardCopy.ts      # Reusable clipboard copy with timeout feedback hook
+│   └── index.ts                 # Hooks barrel export
+├── items/                       # Component atom & composite elements
+│   ├── AiChat.tsx               # Main embedded/standalone chat interface
+│   ├── AiChatArea.tsx           # Virtualized message list with auto-scroll
+│   ├── AiChatInput.tsx          # Auto-resizing textarea with file picker
+│   ├── AiErrorBoundary.tsx      # Crash resilience fallback boundary
+│   ├── AiSidebar.tsx            # Resizable slide-out drawer wrapper
+│   ├── AiSidebarHeader.tsx      # Top bar with title, icon, and close button
+│   ├── CodeBlock.tsx            # Syntax-highlighted copyable code container
+│   ├── FileAttachment.tsx       # Document & image upload preview chip
+│   └── index.ts                 # Items barrel export
+├── styles/                      # Tailwind v4 validated tokens & CSS mappings
+│   ├── aiSidebar.styles.ts      # Structural classes for sidebar, chat, and messages
+│   └── index.ts                 # Styles barrel export
+└── types/                       # TypeScript definitions and interfaces
+    ├── ai.types.ts              # Message models, style configs, and props
+    └── index.ts                 # Types barrel export
+```
 
 ---
 

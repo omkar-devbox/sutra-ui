@@ -16,6 +16,10 @@ import {
   aiChatAreaStyles,
   aiChatMessageStyles,
 } from "../styles/aiSidebar.styles";
+import {
+  DEFAULT_MESSAGE_GAP_PX,
+  DEFAULT_ROW_ESTIMATED_HEIGHT_PX,
+} from "../constant/ai.constant";
 import type {
   AiChatAreaProps,
   Attachment,
@@ -28,8 +32,6 @@ import type {
 // Constants and Dynamic Configuration
 // ----------------------------------------------------
 
-const DEFAULT_MESSAGE_GAP_PX = 18;
-const DEFAULT_ROW_ESTIMATED_HEIGHT_PX = 90;
 const VIRTUALIZER_OVERSCAN_COUNT = 5;
 const AUTO_SCROLL_PROXIMITY_THRESHOLD_PX = 160;
 

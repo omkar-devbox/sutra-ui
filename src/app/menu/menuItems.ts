@@ -1,4 +1,4 @@
-import { LayoutDashboard, Bot } from "lucide-react";
+import { LayoutDashboard, Bot, Tag } from "lucide-react";
 import type { MenuSection, MenuItem } from "@/shared/nav/Sidebar/types/types";
 
 // ==================== Sidebar Menu ====================
@@ -40,6 +40,15 @@ export const SIDEBAR_MENU: MenuSection[] = [
         icon: Bot,
         path: "/ai-demo",
         tooltip: "Turn-key AI Assistant, Streaming, Virtualization & Deep Customization",
+      },
+      {
+        id: "1-5",
+        key: "badge-demo",
+        label: "Badge Showcase",
+        icon: Tag,
+        path: "/badge-demo",
+        tooltip: "Complete suite of Badge variants, status dots, count badges & interactive filters",
+        badge: { text: "New", variant: "info" },
       },
     ],
   },

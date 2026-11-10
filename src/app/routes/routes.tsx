@@ -12,6 +12,9 @@ const DataTableDemoPage = lazy(
 const FormFieldDemoPage = lazy(
   () => import("@/features/formFieldDemo/FormFieldDemoPage")
 );
+const BadgeDemoPage = lazy(
+  () => import("@/features/badgeDemo/BadgeDemoPage")
+);
 const AiDemoPage = lazy(() => import("@/features/aiDemo/AiDemoPage"));
 const GenericPage = lazy(() => import("@/shared/pages/GenericPage/GenericPage"));
 const UnauthorizedPage = lazy(() =>
@@ -108,6 +111,16 @@ export function AppRouter() {
           element={
             <MainLayout pageTitle="Form Field & Layout Showcase" pageSubtitle="Full suite of form controls, responsive layouts & dynamic JSON schemas">
               <FormFieldDemoPage />
+            </MainLayout>
+          }
+        />
+
+        {/* Badge Component Showcase */}
+        <Route
+          path="/badge-demo"
+          element={
+            <MainLayout pageTitle="Badge Component Showcase" pageSubtitle="Full suite of variants, sizes, live status indicators, count badges & interactive filters">
+              <BadgeDemoPage />
             </MainLayout>
           }
         />

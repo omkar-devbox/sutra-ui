@@ -1,4 +1,9 @@
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
 import React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/shared/lib/utils";
 import {
   badgeBaseStyles,
@@ -6,26 +11,23 @@ import {
   badgeDotSizes,
   badgeSizeStyles,
   badgeVariantStyles,
-} from "../style/style";
-import type { BadgeVariant, BadgeSize } from "../style/style";
+} from "../styles/badge.styles";
+import { DEFAULT_MAX_COUNT } from "../constant/badge.constant";
+import type { BadgeProps } from "../types/badge.types";
 
-/* ── Props ─────────────────────────────────────────────────── */
+// ----------------------------------------------------
+// Types and Models
+// ----------------------------------------------------
 
-interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: BadgeVariant;
-  size?: BadgeSize;
-  rounded?: boolean;
-  dot?: boolean;
-  pulse?: boolean;
-  count?: number;
-  maxCount?: number;
-  showZero?: boolean;
-  icon?: React.ReactNode;
-  theme?: Partial<Record<BadgeVariant, string>>;
-}
+export type { BadgeProps } from "../types/badge.types";
 
-/* ── Component ─────────────────────────────────────────────── */
+// ----------------------------------------------------
+// Component Logic
+// ----------------------------------------------------
 
+/**
+ * Universal Badge component for general status indicators, tags, and category labels.
+ */
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   (
     {
@@ -36,71 +38,107 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       dot = false,
       pulse = false,
       count,
-      maxCount = 99,
+      maxCount = DEFAULT_MAX_COUNT,
       showZero = false,
       icon,
       theme = {},
+      asChild = false,
       className,
       ...props
     },
     ref,
   ) => {
-    // Count visibility logic
-    if (count !== undefined && count === 0 && !showZero) return null;
+    // Determine whether content (text children or leading icon) is supplied
+    const hasContent = Boolean(children || icon);
 
+    // Validate numeric counter values
+    const isCountValid = typeof count === "number" && !isNaN(count);
+
+    // Evaluate count visibility rules
+    const shouldShowCount = isCountValid && (count !== 0 || showZero);
+
+    // If count is zero without showZero and no other content exists, unmount cleanly
+    if (count !== undefined && count === 0 && !showZero && !hasContent) {
+      return null;
+    }
+
+    // Calculate overflow counter text (e.g. "99+")
     const displayCount =
-      count !== undefined && count > maxCount ? `${maxCount}+` : count;
+      isCountValid && count > maxCount ? `${maxCount}+` : count;
 
-    // Merge custom theme overrides with defaults
-    const activeVariant = theme?.[variant] ?? badgeVariantStyles[variant];
+    // Resolve variant styling with custom theme fallbacks
+    const activeVariant =
+      theme?.[variant] ?? badgeVariantStyles[variant] ?? badgeVariantStyles.default;
+    const activeDotColor = badgeDotColors[variant] ?? badgeDotColors.default;
     const base = badgeBaseStyles;
 
+    // Resolve component tag (Slot for asChild or standard span)
+    const Comp = asChild ? Slot : "span";
+
+    // Build accessible label for screen readers
+    const defaultAriaLabel = isCountValid
+      ? `${count} ${count === 1 ? "notification" : "notifications"}`
+      : undefined;
+
+    // Standalone status dot role
+    const isStandaloneStatusDot = dot && !children && count === undefined;
+
     return (
-      <span
+      <Comp
         ref={ref}
         className={cn(
           base.root,
           badgeSizeStyles[size],
           activeVariant,
           rounded ? "rounded-full" : "rounded-md",
-          dot && !children && !count && "p-0",
+          // Only apply p-0 if dot indicator is rendered without label or count
+          dot && !children && count === undefined && "p-0",
           className,
         )}
-        aria-label={count !== undefined ? `${count} notifications` : undefined}
+        aria-label={props["aria-label"] ?? defaultAriaLabel}
+        role={isStandaloneStatusDot ? "status" : props.role}
         {...props}
       >
-        {/* Dot indicator */}
+        {/* Dot indicator with optional ping animation */}
         {dot && (
-          <span className={base.dotWrapper}>
+          <span className={base.dotWrapper} aria-hidden="true">
             {pulse && (
-              <span className={cn(base.dotPing, badgeDotColors[variant])} />
+              <span className={cn(base.dotPing, activeDotColor)} />
             )}
             <span
               className={cn(
                 base.dot,
                 badgeDotSizes[size],
-                badgeDotColors[variant],
+                activeDotColor,
               )}
             />
           </span>
         )}
 
-        {/* Optional icon */}
+        {/* Optional leading icon */}
         {icon && (
           <span
             className={
-              children || count !== undefined
+              children || shouldShowCount
                 ? base.iconWithSibling
                 : base.iconOnly
             }
+            aria-hidden="true"
           >
             {icon}
           </span>
         )}
 
-        {/* Label / count */}
-        {count !== undefined ? displayCount : children}
-      </span>
+        {/* Children label slot */}
+        {children && <span>{children}</span>}
+
+        {/* Dynamic counter slot */}
+        {shouldShowCount && (
+          <span className={cn(children && "ml-1.5")}>
+            {displayCount}
+          </span>
+        )}
+      </Comp>
     );
   },
 );

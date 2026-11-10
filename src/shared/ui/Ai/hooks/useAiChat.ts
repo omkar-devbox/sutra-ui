@@ -11,12 +11,12 @@ import type {
   SendMessagePayload,
   UseAiChatOptions,
 } from "../types";
+import { DEFAULT_MAX_MESSAGES } from "../constant/ai.constant";
 
 // ----------------------------------------------------
 // Constants and Dynamic Configuration
 // ----------------------------------------------------
 
-const DEFAULT_MAX_MESSAGES = 100;
 const BOOT_TIMESTAMP = Date.now();
 
 /**

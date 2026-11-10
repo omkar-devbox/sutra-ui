@@ -7,14 +7,11 @@ import { Send, Square, Paperclip } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { FileAttachment } from "./FileAttachment";
 import { aiChatInputStyles } from "../styles/aiSidebar.styles";
+import {
+  DEFAULT_MAX_FILES,
+  DEFAULT_MAX_TEXTAREA_HEIGHT,
+} from "../constant/ai.constant";
 import type { AiChatInputProps } from "../types";
-
-// ----------------------------------------------------
-// Constants and Dynamic Configuration
-// ----------------------------------------------------
-
-const DEFAULT_MAX_FILES = 5;
-const DEFAULT_MAX_TEXTAREA_HEIGHT = 200;
 
 // ----------------------------------------------------
 // Component Implementation
