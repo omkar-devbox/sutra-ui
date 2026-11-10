@@ -1,4 +1,4 @@
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Bot } from "lucide-react";
 import type { MenuSection, MenuItem } from "@/shared/nav/Sidebar/types/types";
 
 // ==================== Sidebar Menu ====================
@@ -32,6 +32,14 @@ export const SIDEBAR_MENU: MenuSection[] = [
         icon: LayoutDashboard,
         path: "/form-demo",
         tooltip: "Comprehensive FormField & Layout Showcase",
+      },
+      {
+        id: "1-4",
+        key: "ai-demo",
+        label: "AI Assistant Demo",
+        icon: Bot,
+        path: "/ai-demo",
+        tooltip: "Turn-key AI Assistant, Streaming, Virtualization & Deep Customization",
       },
     ],
   },

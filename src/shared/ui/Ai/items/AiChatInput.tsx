@@ -1,10 +1,26 @@
-import { useRef, useCallback, useEffect } from "react";
-import { Send, Square } from "lucide-react";
-import { FileAttachment } from "./AiChatArea";
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
+import React, { useRef, useCallback, useEffect } from "react";
+import { Send, Square, Paperclip } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+import { FileAttachment } from "./FileAttachment";
 import { aiChatInputStyles } from "../styles/aiSidebar.styles";
 import type { AiChatInputProps } from "../types";
 
-export const AiChatInput = ({
+// ----------------------------------------------------
+// Constants and Dynamic Configuration
+// ----------------------------------------------------
+
+const DEFAULT_MAX_FILES = 5;
+const DEFAULT_MAX_TEXTAREA_HEIGHT = 200;
+
+// ----------------------------------------------------
+// Component Implementation
+// ----------------------------------------------------
+
+export const AiChatInput: React.FC<AiChatInputProps> = ({
   input,
   setInput,
   onSend,
@@ -15,53 +31,142 @@ export const AiChatInput = ({
   onRemoveAttachment,
   onStop,
   styleConfig,
-}: AiChatInputProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null); // file picker ref
-  const textareaRef = useRef<HTMLTextAreaElement>(null); // textarea ref
+  className,
+  disabled = false,
+  allowedFileTypes,
+  maxFileSize,
+  maxFiles = DEFAULT_MAX_FILES,
+  onAttachmentError,
+  showAttachButton = true,
+  sendIcon,
+  stopIcon,
+  attachIcon,
+  extraActions,
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // --------------------------------------------------
+  // Textarea Auto-Resize Behavior
+  // --------------------------------------------------
+
+  // Auto-resize textarea height dynamically based on content
+  useEffect(() => {
+    const textareaElement = textareaRef.current;
+    if (!textareaElement) return;
+    textareaElement.style.height = "auto";
+    const maxHeight = typeof styleConfig?.input?.maxHeight === "number"
+      ? styleConfig.input.maxHeight
+      : DEFAULT_MAX_TEXTAREA_HEIGHT;
+    textareaElement.style.height = `${Math.min(textareaElement.scrollHeight, maxHeight)}px`;
+  }, [input, styleConfig?.input?.maxHeight]);
+
+  // --------------------------------------------------
+  // File Attachment Validation & Processing Handlers
+  // --------------------------------------------------
+
+  // Handle file picker selection with validation
   const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files?.length) {
-        onAttach?.(e.target.files); // pass files
-        if (fileInputRef.current) fileInputRef.current.value = ""; // reset input
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const selectedFiles = event.target.files;
+      if (!selectedFiles || selectedFiles.length === 0) return;
+
+      // Validate total file count
+      if (attachments.length + selectedFiles.length > maxFiles) {
+        onAttachmentError?.(
+          `Maximum ${maxFiles} file(s) allowed. You currently have ${attachments.length}.`
+        );
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      // Validate each file against size and type constraints
+      const validFiles: File[] = [];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const currentFile = selectedFiles[i];
+
+        // Max file size validation
+        if (maxFileSize && currentFile.size > maxFileSize) {
+          const maxMegabytes = (maxFileSize / (1024 * 1024)).toFixed(1);
+          onAttachmentError?.(
+            `File "${currentFile.name}" exceeds the maximum allowed size of ${maxMegabytes}MB.`
+          );
+          continue;
+        }
+
+        // Allowed file types validation
+        if (allowedFileTypes && allowedFileTypes.length > 0) {
+          const isTypeAllowed = allowedFileTypes.some((allowedType) => {
+            if (allowedType.endsWith("/*")) {
+              const mimeCategoryPrefix = allowedType.slice(0, -2);
+              return currentFile.type.startsWith(mimeCategoryPrefix);
+            }
+            if (allowedType.startsWith(".")) {
+              return currentFile.name.toLowerCase().endsWith(allowedType.toLowerCase());
+            }
+            return currentFile.type === allowedType;
+          });
+
+          if (!isTypeAllowed) {
+            onAttachmentError?.(
+              `File "${currentFile.name}" is not an accepted format (${allowedFileTypes.join(", ")}).`
+            );
+            continue;
+          }
+        }
+
+        validFiles.push(currentFile);
+      }
+
+      if (validFiles.length > 0 && onAttach) {
+        // Construct standard FileList-like container for callback
+        const dataTransfer = new DataTransfer();
+        validFiles.forEach((file) => dataTransfer.items.add(file));
+        onAttach(dataTransfer.files);
+      }
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
       }
     },
-    [onAttach],
+    [attachments.length, maxFiles, maxFileSize, allowedFileTypes, onAttach, onAttachmentError]
   );
+
+  // --------------------------------------------------
+  // Message Submission & Keyboard Handlers
+  // --------------------------------------------------
 
   const handleSend = useCallback(() => {
-    if (!input.trim() && attachments.length === 0) return; // guard empty
-    onSend(); // send message
-  }, [input, attachments, onSend]);
+    if ((!input.trim() && attachments.length === 0) || isTyping || disabled) {
+      return;
+    }
+    onSend();
+  }, [input, attachments, isTyping, disabled, onSend]);
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault(); // prevent newline
-        handleSend(); // send
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        handleSend();
       }
     },
-    [handleSend],
+    [handleSend]
   );
 
-  // auto-resize textarea
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto"; // reset height
-    el.style.height = `${Math.min(el.scrollHeight, 200)}px`; // grow with limit
-  }, [input]);
+  const inputStyles = styleConfig?.input;
+  const isSendDisabled =
+    (!input.trim() && attachments.length === 0) || isTyping || disabled;
 
   return (
     <div
-      className={aiChatInputStyles.root}
+      className={cn(aiChatInputStyles.root, className)}
       style={{
-        backgroundColor: styleConfig?.input?.bg,
-        borderColor: styleConfig?.input?.border,
+        backgroundColor: inputStyles?.bg,
+        borderColor: inputStyles?.border,
       }}
     >
       <div className={aiChatInputStyles.inner}>
-        {/* attachments */}
+        {/* Attachment Previews Area */}
         {attachments.length > 0 && (
           <div className={aiChatInputStyles.attachmentPreview}>
             {attachments.map((file) => (
@@ -69,58 +174,103 @@ export const AiChatInput = ({
                 <FileAttachment
                   attachment={file}
                   onRemove={onRemoveAttachment}
+                  styleConfig={styleConfig}
                 />
               </div>
             ))}
           </div>
         )}
 
-        {/* input */}
-        <div className="relative group flex items-center">
+        {/* Input Textarea and Action Buttons */}
+        <div className={aiChatInputStyles.textareaWrapper}>
+          {/* File Attachment Trigger Button */}
+          {showAttachButton && onAttach && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
+              className={aiChatInputStyles.attachButtonLeft}
+              aria-label="Attach documents or images"
+              title="Attach files"
+              disabled={disabled || isTyping}
+              style={{
+                color: inputStyles?.attachButtonColor,
+              }}
+            >
+              {attachIcon ?? <Paperclip size={18} aria-hidden="true" />}
+            </button>
+          )}
+
+          {/* Main Input Textarea */}
           <textarea
             ref={textareaRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)} // update input
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className={aiChatInputStyles.textarea}
-            style={{ backgroundColor: styleConfig?.input?.textareaBg }}
             rows={1}
-            aria-label="Chat input"
+            disabled={disabled}
+            className={cn(
+              aiChatInputStyles.textarea,
+              !showAttachButton && "pl-4"
+            )}
+            style={{
+              backgroundColor: inputStyles?.textareaBg,
+              color: inputStyles?.textareaText,
+              borderColor: inputStyles?.textareaBorder,
+              borderRadius: inputStyles?.radius,
+              fontSize: inputStyles?.fontSize,
+              minHeight: inputStyles?.minHeight,
+            }}
+            aria-label="Chat message input"
           />
 
-          {/* actions */}
+          {/* Action Buttons: Send, Stop, Extra Actions */}
           <div className={aiChatInputStyles.actionGroup}>
+            {extraActions}
+
             {isTyping ? (
               <button
-                onClick={onStop} // stop streaming
+                onClick={onStop}
                 className={aiChatInputStyles.stopButton}
-                title="Stop generating"
+                title="Stop generating response"
                 type="button"
+                aria-label="Stop generation"
+                style={{
+                  backgroundColor: inputStyles?.stopButtonBg,
+                  color: inputStyles?.stopButtonText,
+                }}
               >
-                <Square size={16} fill="currentColor" />
+                {stopIcon ?? <Square size={16} fill="currentColor" aria-hidden="true" />}
               </button>
             ) : (
               <button
                 onClick={handleSend}
-                disabled={(!input.trim() && attachments.length === 0) || isTyping} // disable invalid send
+                disabled={isSendDisabled}
                 className={aiChatInputStyles.sendButton}
                 type="button"
                 aria-label="Send message"
+                title="Send message"
+                style={{
+                  backgroundColor: inputStyles?.sendButtonBg,
+                  color: inputStyles?.sendButtonText,
+                  borderRadius: inputStyles?.sendButtonRadius,
+                }}
               >
-                <Send size={18} />
+                {sendIcon ?? <Send size={17} aria-hidden="true" />}
               </button>
             )}
           </div>
         </div>
 
-        {/* hidden file input */}
+        {/* Hidden Native File Input Element */}
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
           className="hidden"
           multiple
+          accept={allowedFileTypes ? allowedFileTypes.join(",") : undefined}
+          aria-hidden="true"
         />
       </div>
     </div>

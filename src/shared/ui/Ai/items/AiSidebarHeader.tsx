@@ -1,67 +1,107 @@
-import { useMemo } from "react";
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
+import React from "react";
 import { X, Sparkles } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
 import { aiSidebarHeaderStyles } from "../styles/aiSidebar.styles";
 import type { AiSidebarHeaderProps } from "../types";
 
-export const AiSidebarHeader = ({
+// ----------------------------------------------------
+// Component Implementation
+// ----------------------------------------------------
+
+export const AiSidebarHeader: React.FC<AiSidebarHeaderProps> = ({
   onClose,
   title = "AI Assistant",
   subtitle,
   icon,
+  closeIcon,
   showClose = true,
   styleConfig,
-}: AiSidebarHeaderProps) => {
-  // memoize inline styles to avoid re-renders
-  const headerStyle = useMemo(
-    () => ({
-      backgroundColor: styleConfig?.header?.bg,
-      borderColor: styleConfig?.header?.border,
-    }),
-    [styleConfig],
-  );
+  className,
+  actions,
+  children,
+}) => {
+  const headerStyles = styleConfig?.header;
 
-  const titleStyle = useMemo(
-    () => ({ color: styleConfig?.header?.text }),
-    [styleConfig],
-  );
-
-  const subtitleStyle = useMemo(
-    () => ({ color: styleConfig?.header?.subtitle }),
-    [styleConfig],
-  );
+  // Custom child renderer overrides standard header layout if provided
+  if (children) {
+    return (
+      <header
+        className={cn(aiSidebarHeaderStyles.root, className)}
+        style={{
+          backgroundColor: headerStyles?.bg,
+          borderColor: headerStyles?.border,
+          height: headerStyles?.height,
+          padding: headerStyles?.padding,
+          borderRadius: headerStyles?.radius,
+        }}
+      >
+        {children}
+      </header>
+    );
+  }
 
   return (
-    <div className={aiSidebarHeaderStyles.root} style={headerStyle}>
-      {/* left section */}
-      <div className="flex items-center gap-3">
-        <div className={aiSidebarHeaderStyles.iconWrapper}>
-          {icon ?? <Sparkles size={20} />} {/* fallback icon */}
+    <header
+      className={cn(aiSidebarHeaderStyles.root, className)}
+      style={{
+        backgroundColor: headerStyles?.bg,
+        borderColor: headerStyles?.border,
+        height: headerStyles?.height,
+        padding: headerStyles?.padding,
+        borderRadius: headerStyles?.radius,
+      }}
+    >
+      {/* Left Title and Icon Section */}
+      <div className={aiSidebarHeaderStyles.leftSection}>
+        <div
+          className={aiSidebarHeaderStyles.iconWrapper}
+          style={{
+            backgroundColor: headerStyles?.iconBg,
+            color: headerStyles?.iconColor,
+          }}
+          aria-hidden="true"
+        >
+          {icon ?? <Sparkles size={20} />}
         </div>
 
         <div className={aiSidebarHeaderStyles.titleWrapper}>
-          <h2 className={aiSidebarHeaderStyles.title} style={titleStyle}>
+          <h2
+            className={aiSidebarHeaderStyles.title}
+            style={{ color: headerStyles?.text }}
+          >
             {title}
           </h2>
 
           {subtitle && (
-            <p className={aiSidebarHeaderStyles.subtitle} style={subtitleStyle}>
+            <p
+              className={aiSidebarHeaderStyles.subtitle}
+              style={{ color: headerStyles?.subtitle }}
+            >
               {subtitle}
             </p>
           )}
         </div>
       </div>
 
-      {/* close button */}
-      {showClose && (
-        <button
-          onClick={onClose} // close handler
-          className={aiSidebarHeaderStyles.closeButton}
-          aria-label="Close sidebar" // accessibility
-          type="button" // prevent form submit
-        >
-          <X size={18} />
-        </button>
-      )}
-    </div>
+      {/* Right Controls: Actions Slot and Close Button */}
+      <div className={aiSidebarHeaderStyles.rightSection}>
+        {actions}
+
+        {showClose && onClose && (
+          <button
+            onClick={onClose}
+            className={aiSidebarHeaderStyles.closeButton}
+            aria-label="Close sidebar"
+            type="button"
+          >
+            {closeIcon ?? <X size={18} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
+    </header>
   );
 };

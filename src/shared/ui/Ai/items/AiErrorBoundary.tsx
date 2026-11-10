@@ -1,87 +1,101 @@
-import { Component, type ErrorInfo, type ReactNode } from "react";
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
+import React, { Component, type ErrorInfo } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import type { AiErrorBoundaryProps } from "../types";
 
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, info: ErrorInfo) => void; // external logging hook
-}
+// ----------------------------------------------------
+// Types and Models
+// ----------------------------------------------------
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
 
-export class AiErrorBoundary extends Component<Props, State> {
-  public state: State = {
+// ----------------------------------------------------
+// Component Implementation
+// ----------------------------------------------------
+
+export class AiErrorBoundary extends Component<AiErrorBoundaryProps, ErrorBoundaryState> {
+  public override state: ErrorBoundaryState = {
     hasError: false,
     error: null,
   };
 
-  // update state on error
-  public static getDerivedStateFromError(error: Error): State {
+  /**
+   * Updates state so the next render will show the fallback UI.
+   */
+  public static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
-  // side effects (logging)
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    this.props.onError?.(error, errorInfo); // allow external logger (e.g. Sentry)
+  /**
+   * Logs error details or invokes external monitoring callbacks.
+   */
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    this.props.onError?.(error, errorInfo);
     if (process.env.NODE_ENV === "development") {
-      console.error("AI Component Error:", error, errorInfo); // dev-only log
+      console.error("[AiErrorBoundary] Caught rendering error:", error, errorInfo);
     }
   }
 
-  // reset boundary
-  private handleReset = () => {
+  /**
+   * Resets the error boundary state to allow re-rendering.
+   */
+  private handleReset = (): void => {
     this.setState({ hasError: false, error: null });
+    this.props.onReset?.();
   };
 
-  public render() {
+  public override render(): React.ReactNode {
     const { hasError, error } = this.state;
+    const { children, fallback } = this.props;
 
     if (hasError) {
-      if (this.props.fallback) return this.props.fallback; // custom fallback
+      if (fallback) {
+        return fallback;
+      }
 
       return (
         <div
-          role="alert" // accessibility
-          className="my-4 flex flex-col items-center gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-center"
+          role="alert"
+          aria-live="assertive"
+          className="my-3 flex flex-col items-center gap-2.5 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/90 dark:bg-rose-950/30 p-4 text-center backdrop-blur-sm"
         >
-          {/* icon */}
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
-            <AlertCircle size={20} />
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400">
+            <AlertCircle size={18} aria-hidden="true" />
           </div>
 
-          {/* message */}
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-red-900">
-              Rendering Error
+          <div className="space-y-0.5">
+            <p className="text-xs font-semibold text-rose-900 dark:text-rose-200">
+              Message Render Error
             </p>
-            <p className="max-w-[220px] text-xs text-red-700">
-              Failed to render this message. The content might be malformed.
+            <p className="max-w-[240px] text-[11px] text-rose-700 dark:text-rose-400 leading-normal">
+              Could not display this message properly.
             </p>
 
-            {/* optional error message (dev only) */}
             {process.env.NODE_ENV === "development" && error?.message && (
-              <p className="mt-1 break-all text-[10px] text-red-500 opacity-70">
+              <p className="mt-1 max-w-[260px] truncate text-[10px] font-mono text-rose-600/80 dark:text-rose-400/80">
                 {error.message}
               </p>
             )}
           </div>
 
-          {/* retry */}
           <button
-            onClick={this.handleReset} // reset state
-            type="button" // prevent form submit
-            className="flex items-center gap-2 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 focus:outline-none"
+            onClick={this.handleReset}
+            type="button"
+            className="mt-1 flex items-center gap-1.5 rounded-lg border border-rose-200 dark:border-rose-800 bg-white dark:bg-neutral-900 px-3 py-1 text-xs font-medium text-rose-700 dark:text-rose-300 transition-colors hover:bg-rose-50 dark:hover:bg-neutral-800 cursor-pointer"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={12} aria-hidden="true" />
             Try again
           </button>
         </div>
       );
     }
 
-    return this.props.children; // render children normally
+    return children;
   }
 }

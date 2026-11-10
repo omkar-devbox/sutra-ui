@@ -1,119 +1,223 @@
-import { useState, useCallback } from "react";
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
+import React, { useState, useCallback } from "react";
+import { cn } from "@/shared/lib/utils";
 import { AiSidebarHeader } from "./AiSidebarHeader";
 import { AiChatArea } from "./AiChatArea";
 import { AiChatInput } from "./AiChatInput";
 import { useAiChat } from "../hooks/useAiChat";
 import type { AiSuggestion, Attachment, AiChatProps } from "../types";
 
-export const AiChat = ({
+// ----------------------------------------------------
+// Constants and Dynamic Configuration
+// ----------------------------------------------------
+
+const DEFAULT_SUGGESTIONS: AiSuggestion[] = [
+  { id: "1", label: "Summarize this page", action: "summarize" },
+  { id: "2", label: "Write a React component", action: "code" },
+  { id: "3", label: "Explain key architectural concepts", action: "explain" },
+];
+
+/**
+ * Creates unique ID for file attachments safely.
+ */
+function createAttachmentId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `att_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
+// ----------------------------------------------------
+// Component Implementation
+// ----------------------------------------------------
+
+export const AiChat: React.FC<AiChatProps> = ({
   className,
   onClose,
   showCloseButton = false,
   initialMessages,
   systemContext,
-  suggestions,
+  suggestions = DEFAULT_SUGGESTIONS,
+  onSuggestionClick,
   title = "AI Assistant",
   subtitle,
+  icon,
+  closeIcon,
   styleConfig,
-}: AiChatProps) => {
+  placeholder = "Ask something...",
+  showAvatars = true,
+  showTimestamps = false,
+  userAvatar,
+  assistantAvatar,
+  emptyStateTitle,
+  emptyStateDescription,
+  emptyStateIcon,
+  renderEmptyState,
+  renderTypingIndicator,
+  renderHeaderActions,
+  allowedFileTypes,
+  maxFileSize,
+  maxFiles,
+  onAttachmentError,
+  showAttachButton = true,
+  formatTimestamp,
+  autoScroll = true,
+  messageGap,
+  onMessageSent,
+  onMessageReceived,
+}) => {
   const { messages, isLoading, streamingState, sendMessage, stopStreaming } =
     useAiChat({
       initialMessages,
       systemContext,
+      onMessage: (msg) => {
+        if (msg.role === "user") {
+          onMessageSent?.(msg);
+        } else if (msg.role === "assistant" && msg.status === "sent") {
+          onMessageReceived?.(msg);
+        }
+      },
     });
 
-  const [input, setInput] = useState(""); // input state
-  const [attachments, setAttachments] = useState<Attachment[]>([]); // attachments state
+  // --------------------------------------------------
+  // Chat State & Attachment Management
+  // --------------------------------------------------
 
+  const [input, setInput] = useState<string>("");
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+
+  // Sends the user message and revokes preview object URLs to prevent leaks
   const handleSend = useCallback(() => {
-    if (!input.trim() && attachments.length === 0) return; // guard empty
+    if (!input.trim() && attachments.length === 0) return;
 
     sendMessage({
       content: input,
-      attachments: attachments.length ? attachments : undefined,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
 
-    setInput(""); // reset input
+    setInput("");
 
-    // cleanup object URLs before clearing
-    attachments.forEach((a) => {
-      if (a.preview) URL.revokeObjectURL(a.preview);
+    // Revoke object URLs once message payload is dispatched to release memory
+    attachments.forEach((attachment) => {
+      if (attachment.preview && attachment.preview.startsWith("blob:")) {
+        URL.revokeObjectURL(attachment.preview);
+      }
     });
 
-    setAttachments([]); // reset attachments
+    setAttachments([]);
   }, [input, attachments, sendMessage]);
 
+  // Processes newly selected files with preview generator
   const handleAttach = useCallback((files: FileList) => {
     const newAttachments: Attachment[] = Array.from(files).map((file) => ({
-      id: crypto.randomUUID(),
+      id: createAttachmentId(),
       name: file.name,
       size: file.size,
       type: file.type,
       preview: file.type.startsWith("image/")
         ? URL.createObjectURL(file)
-        : undefined, // preview for images
+        : undefined,
       metadata: { lastModified: file.lastModified },
     }));
 
-    setAttachments((prev) => [...prev, ...newAttachments]); // append files
+    setAttachments((prevAttachments) => [...prevAttachments, ...newAttachments]);
   }, []);
 
-  const handleRemoveAttachment = useCallback((id: string) => {
-    setAttachments((prev) => {
-      const removed = prev.find((a) => a.id === id);
-      if (removed?.preview) URL.revokeObjectURL(removed.preview); // cleanup memory
-      return prev.filter((a) => a.id !== id);
+  // Removes a single attachment and frees its preview object URL
+  const handleRemoveAttachment = useCallback((attachmentId: string) => {
+    setAttachments((prevAttachments) => {
+      const removedAttachment = prevAttachments.find((att) => att.id === attachmentId);
+      if (removedAttachment?.preview && removedAttachment.preview.startsWith("blob:")) {
+        URL.revokeObjectURL(removedAttachment.preview);
+      }
+      return prevAttachments.filter((att) => att.id !== attachmentId);
     });
   }, []);
 
-  const defaultSuggestions: AiSuggestion[] = [
-    { id: "1", label: "Summarize this page", action: "summarize" },
-    { id: "2", label: "Write a React component", action: "code" },
-    { id: "3", label: "Check for errors", action: "error" },
-  ];
+  // --------------------------------------------------
+  // Suggestion & Layout Handlers
+  // --------------------------------------------------
+
+  // Handles clicking a suggestion chip (either custom handler or default send)
+  const handleSuggestionSelect = useCallback(
+    (suggestion: AiSuggestion) => {
+      if (onSuggestionClick) {
+        onSuggestionClick(suggestion);
+      } else {
+        sendMessage({ content: suggestion.label });
+      }
+    },
+    [onSuggestionClick, sendMessage]
+  );
+
+  const isStreaming = streamingState.isStreaming;
+  const computedSubtitle = isStreaming
+    ? "Generating response..."
+    : subtitle || "Always here to help";
 
   return (
     <div
-      className={`flex h-full flex-col overflow-hidden bg-neutral-bg ${
-        className || ""
-      }`}
+      className={cn(
+        "flex h-full flex-col overflow-hidden bg-[#ebf7ff] dark:bg-[#03131e]",
+        className
+      )}
       style={{ backgroundColor: styleConfig?.chatArea?.bg }}
     >
-      {/* header */}
+      {/* Header Bar */}
       <AiSidebarHeader
-        onClose={onClose || (() => {})}
+        onClose={onClose}
         title={title}
-        subtitle={
-          streamingState.isStreaming
-            ? "Generating response..."
-            : subtitle || "Always here to help"
-        }
+        subtitle={computedSubtitle}
+        icon={icon}
+        closeIcon={closeIcon}
         showClose={showCloseButton}
         styleConfig={styleConfig}
+        actions={renderHeaderActions ? renderHeaderActions() : undefined}
       />
 
-      {/* chat area */}
+      {/* Virtualized Message Scroll Area */}
       <div className="relative flex flex-1 flex-col overflow-hidden">
         <AiChatArea
           messages={messages}
-          isTyping={isLoading || streamingState.isStreaming}
-          suggestions={suggestions || defaultSuggestions}
-          onSuggestionClick={(s) => sendMessage({ content: s.label })} // suggestion send
+          isTyping={isLoading || isStreaming}
+          suggestions={suggestions}
+          onSuggestionClick={handleSuggestionSelect}
           styleConfig={styleConfig}
+          emptyStateTitle={emptyStateTitle}
+          emptyStateDescription={emptyStateDescription}
+          emptyStateIcon={emptyStateIcon}
+          renderEmptyState={renderEmptyState}
+          renderTypingIndicator={renderTypingIndicator}
+          showAvatars={showAvatars}
+          showTimestamps={showTimestamps}
+          userAvatar={userAvatar}
+          assistantAvatar={assistantAvatar}
+          formatTimestamp={formatTimestamp}
+          autoScroll={autoScroll}
+          messageGap={messageGap}
         />
       </div>
 
-      {/* input */}
+      {/* Input Action Form */}
       <AiChatInput
         input={input}
         setInput={setInput}
         onSend={handleSend}
-        isTyping={isLoading || streamingState.isStreaming}
+        isTyping={isLoading || isStreaming}
+        placeholder={placeholder}
         onAttach={handleAttach}
         attachments={attachments}
         onRemoveAttachment={handleRemoveAttachment}
         onStop={stopStreaming}
         styleConfig={styleConfig}
+        allowedFileTypes={allowedFileTypes}
+        maxFileSize={maxFileSize}
+        maxFiles={maxFiles}
+        onAttachmentError={onAttachmentError}
+        showAttachButton={showAttachButton}
       />
     </div>
   );

@@ -12,6 +12,7 @@ const DataTableDemoPage = lazy(
 const FormFieldDemoPage = lazy(
   () => import("@/features/formFieldDemo/FormFieldDemoPage")
 );
+const AiDemoPage = lazy(() => import("@/features/aiDemo/AiDemoPage"));
 const GenericPage = lazy(() => import("@/shared/pages/GenericPage/GenericPage"));
 const UnauthorizedPage = lazy(() =>
   import("@/shared/pages/unauthorized/UnauthorizedPage")
@@ -107,6 +108,16 @@ export function AppRouter() {
           element={
             <MainLayout pageTitle="Form Field & Layout Showcase" pageSubtitle="Full suite of form controls, responsive layouts & dynamic JSON schemas">
               <FormFieldDemoPage />
+            </MainLayout>
+          }
+        />
+
+        {/* AI Assistant Showcase */}
+        <Route
+          path="/ai-demo"
+          element={
+            <MainLayout pageTitle="AI Assistant Showcase" pageSubtitle="Full suite of conversational AI, streaming, virtualization & customization">
+              <AiDemoPage />
             </MainLayout>
           }
         />

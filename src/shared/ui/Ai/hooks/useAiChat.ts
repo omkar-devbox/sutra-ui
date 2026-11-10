@@ -1,122 +1,208 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
+import { useState, useCallback, useRef, useEffect } from "react";
 import type {
   Message,
   ChatState,
   StreamingState,
   ChatActions,
   SendMessagePayload,
+  UseAiChatOptions,
 } from "../types";
 
-interface UseAiChatOptions {
-  initialMessages?: Message[];
-  systemContext?: string;
-  onMessage?: (message: Message) => void;
+// ----------------------------------------------------
+// Constants and Dynamic Configuration
+// ----------------------------------------------------
+
+const DEFAULT_MAX_MESSAGES = 100;
+const BOOT_TIMESTAMP = Date.now();
+
+/**
+ * Generates unique identifiers with browser crypto support and fallback.
+ */
+function createMessageId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 }
 
-const MAX_MESSAGES = 100; // prevent memory growth
-const BOOT_TIME = Date.now(); // stable timestamp for initial messages
+/**
+ * Creates standard initial messages when none are provided.
+ */
+function createInitialMessages(systemContext?: string): Message[] {
+  return [
+    {
+      id: "system-init",
+      role: "system",
+      content: systemContext || "AI Assistant initialized. Context loaded.",
+      createdAt: BOOT_TIMESTAMP,
+      status: "sent",
+    },
+    {
+      id: "welcome",
+      role: "assistant",
+      content: "Hello! I'm your AI assistant. How can I help you today?",
+      createdAt: BOOT_TIMESTAMP,
+      status: "sent",
+    },
+  ];
+}
+
+// ----------------------------------------------------
+// Hook Implementation
+// ----------------------------------------------------
 
 export const useAiChat = (
-  options: UseAiChatOptions = {},
+  options: UseAiChatOptions = {}
 ): ChatState & ChatActions & { streamingState: StreamingState } => {
-  const { initialMessages, systemContext, onMessage } = options;
+  const {
+    initialMessages,
+    systemContext,
+    onMessage,
+    onError,
+    maxMessages = DEFAULT_MAX_MESSAGES,
+  } = options;
 
-  // initialize messages with system context fallback
-  const initialState = useMemo<Message[]>(() => {
-    if (initialMessages) return initialMessages;
+  // --------------------------------------------------
+  // Chat State & Mutable References
+  // --------------------------------------------------
 
-    return [
-      {
-        id: "system-init",
-        role: "system",
-        content: systemContext || "AI Assistant initialized. Context loaded.",
-        createdAt: BOOT_TIME,
-        status: "sent",
-      },
-      {
-        id: "welcome",
-        role: "assistant",
-        content: "Hello! I'm your AI assistant. How can I help?",
-        createdAt: BOOT_TIME,
-        status: "sent",
-      },
-    ];
-  }, [initialMessages, systemContext]);
+  // Initialize state once with initial messages or default system welcome
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (initialMessages && initialMessages.length > 0) {
+      return initialMessages;
+    }
+    return createInitialMessages(systemContext);
+  });
 
-  const [messages, setMessages] = useState<Message[]>(initialState);
-  const [isLoading, setIsLoading] = useState(false);
-
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [streamingState, setStreamingState] = useState<StreamingState>({
     isStreaming: false,
   });
 
-  const abortRef = useRef<AbortController | null>(null);
-  const isSendingRef = useRef(false);
+  // Mutable refs prevent stale closures and avoid recreating callbacks
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const isSendingRef = useRef<boolean>(false);
+  const onMessageRef = useRef(onMessage);
+  onMessageRef.current = onMessage;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
+  const maxMessagesRef = useRef(maxMessages);
+  maxMessagesRef.current = maxMessages;
 
-  const generateId = () => crypto.randomUUID(); // id generator
+  // Track initialMessages prop changes and sync safely when explicitly provided
+  const prevInitialMessagesRef = useRef(initialMessages);
+  useEffect(() => {
+    if (
+      initialMessages &&
+      initialMessages !== prevInitialMessagesRef.current &&
+      initialMessages.length > 0
+    ) {
+      setMessages(initialMessages);
+      prevInitialMessagesRef.current = initialMessages;
+    }
+  }, [initialMessages]);
 
-  // optimized + safe message update
-  const updateMessage = useCallback((id: string, content: string) => {
-    setMessages((prev) => {
-      const lastIdx = prev.length - 1;
-      const last = prev[lastIdx];
+  // --------------------------------------------------
+  // Helper State Updaters & Streaming Controls
+  // --------------------------------------------------
 
-      if (last?.id === id) {
-        const next = [...prev];
-        next[lastIdx] = { ...last, content };
-        return next;
+  // Updates the targeted message content; optimizes for last message in O(1)
+  const updateMessageContent = useCallback((targetId: string, updatedContent: string) => {
+    setMessages((prevMessages) => {
+      const lastIndex = prevMessages.length - 1;
+      const lastMessage = prevMessages[lastIndex];
+
+      if (lastMessage?.id === targetId) {
+        const nextMessages = [...prevMessages];
+        nextMessages[lastIndex] = { ...lastMessage, content: updatedContent };
+        return nextMessages;
       }
 
-      const idx = prev.findIndex((m) => m.id === id);
-      if (idx === -1) return prev;
+      const targetIndex = prevMessages.findIndex((message) => message.id === targetId);
+      if (targetIndex === -1) return prevMessages;
 
-      const next = [...prev];
-      next[idx] = { ...next[idx], content };
-      return next;
+      const nextMessages = [...prevMessages];
+      nextMessages[targetIndex] = { ...nextMessages[targetIndex], content: updatedContent };
+      return nextMessages;
     });
   }, []);
 
+  // Stops streaming cleanly and marks current message as sent
   const stopStreaming = useCallback(() => {
-    abortRef.current?.abort(); // cancel request
-    abortRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    setStreamingState((prevState) => {
+      if (prevState.streamingMessageId) {
+        const streamMessageId = prevState.streamingMessageId;
+        setMessages((currentMessages) =>
+          currentMessages.map((message) =>
+            message.id === streamMessageId
+              ? { ...message, status: "sent", isStreaming: false }
+              : message
+          )
+        );
+      }
+      return { isStreaming: false };
+    });
+
+    setIsLoading(false);
+    isSendingRef.current = false;
   }, []);
 
+  // --------------------------------------------------
+  // Message Sending & Streaming Simulation Logic
+  // --------------------------------------------------
+
+  // Sends message and initiates AI response streaming simulation
   const sendMessage = useCallback(
     async (payload: SendMessagePayload) => {
       const { content, attachments } = payload;
+      const trimmedContent = content.trim();
 
-      // guard invalid or parallel sends
+      // Guard against empty payloads or concurrent in-flight requests
       if (
-        (!content.trim() && (!attachments || attachments.length === 0)) ||
-        isLoading ||
+        (!trimmedContent && (!attachments || attachments.length === 0)) ||
         isSendingRef.current
-      )
+      ) {
         return;
+      }
 
       isSendingRef.current = true;
+      setIsLoading(true);
 
       const userMessage: Message = {
-        id: generateId(),
+        id: createMessageId(),
         role: "user",
-        content,
-        attachments,
+        content: trimmedContent,
+        attachments: attachments && attachments.length > 0 ? attachments : undefined,
         createdAt: Date.now(),
         status: "sent",
       };
 
-      setMessages((prev) => {
-        const next = [...prev, userMessage];
-        return next.length > MAX_MESSAGES ? next.slice(-MAX_MESSAGES) : next;
+      // Append user message with capacity limit enforcement
+      setMessages((prevMessages) => {
+        const nextMessages = [...prevMessages, userMessage];
+        const capacityLimit = maxMessagesRef.current;
+        return nextMessages.length > capacityLimit ? nextMessages.slice(-capacityLimit) : nextMessages;
       });
 
-      onMessage?.(userMessage);
-      setIsLoading(true);
+      onMessageRef.current?.(userMessage);
+
+      const assistantId = createMessageId();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       try {
-        const assistantId = generateId();
-
-        setMessages((prev) => [
-          ...prev,
+        // Create initial placeholder for incoming assistant response
+        setMessages((prevMessages) => [
+          ...prevMessages,
           {
             id: assistantId,
             role: "assistant",
@@ -124,106 +210,123 @@ export const useAiChat = (
             status: "sending",
             isStreaming: true,
             createdAt: Date.now(),
-          } as Message,
+          },
         ]);
-
-        const controller = new AbortController();
-        abortRef.current = controller;
 
         setStreamingState({
           isStreaming: true,
           streamingMessageId: assistantId,
         });
 
-        // simulated AI response
-        let response = `Response for: "${content}"`;
+        // Determine simulated response text based on prompt
+        let responseText = `I have received your request: "${trimmedContent}"`;
 
-        if (attachments?.length) {
-          response = `I see you've attached ${attachments.length} file(s): ${attachments
-            .map((a) => a.name)
-            .join(", ")}. How can I help?`;
-        } else if (content.toLowerCase().includes("summarize")) {
-          response =
-            "Here is a summary of your page. It is modular, but virtualization can improve performance.";
-        } else if (content.toLowerCase().includes("code")) {
-          response = `Optimized React component:\n\n\`\`\`tsx\nimport { memo } from 'react';\nexport const MyComponent = memo(({ data }) => <div>{data}</div>);\n\`\`\``;
+        if (attachments && attachments.length > 0) {
+          const fileNames = attachments.map((att) => att.name).join(", ");
+          responseText = `I received your ${attachments.length} attachment(s): ${fileNames}. How would you like me to process them?`;
+        } else if (trimmedContent.toLowerCase().includes("summarize")) {
+          responseText =
+            "### Summary\n\nYour UI components are modular, well-structured, and ready for theme customization. TanStack Virtual is used for virtualization with adaptive auto-scroll.";
+        } else if (trimmedContent.toLowerCase().includes("code")) {
+          responseText =
+            "Here is an optimized React component with TypeScript:\n\n```tsx\nimport React, { memo } from 'react';\n\ninterface CardProps {\n  title: string;\n  count: number;\n}\n\nexport const MetricCard: React.FC<CardProps> = memo(({ title, count }) => {\n  return (\n    <div className=\"p-4 rounded-xl border border-neutral-200 bg-white dark:bg-neutral-900\">\n      <h4 className=\"text-sm text-neutral-500\">{title}</h4>\n      <p className=\"text-2xl font-bold mt-1\">{count}</p>\n    </div>\n  );\n});\n```";
         }
 
-        if (content.toLowerCase().includes("error")) {
-          throw new Error("Simulated network error. Please try again.");
+        if (trimmedContent.toLowerCase().includes("simulate error")) {
+          throw new Error("Simulated API connection failure. Please retry your prompt.");
         }
 
-        const words = response.split(" ");
-        const chunkSize = words.length > 100 ? 5 : 2; // adaptive streaming
-        let current = "";
+        // Stream response in adaptive chunks
+        const words = responseText.split(" ");
+        const chunkSize = words.length > 80 ? 4 : 2;
+        let accumulatedText = "";
 
         for (let i = 0; i < words.length; i += chunkSize) {
-          if (controller.signal.aborted) break;
+          if (controller.signal.aborted) {
+            break;
+          }
 
-          await new Promise((r) => setTimeout(r, 60));
+          await new Promise((resolve) => setTimeout(resolve, 50));
+
+          if (controller.signal.aborted) {
+            break;
+          }
 
           const chunk = words.slice(i, i + chunkSize).join(" ");
-          current += (current ? " " : "") + chunk;
-
-          updateMessage(assistantId, current);
+          accumulatedText += (accumulatedText ? " " : "") + chunk;
+          updateMessageContent(assistantId, accumulatedText);
         }
 
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId
-              ? { ...m, status: "sent", isStreaming: false }
-              : m,
-          ),
-        );
+        // Finalize completed streaming response
+        if (!controller.signal.aborted) {
+          setMessages((prevMessages) =>
+            prevMessages.map((message) =>
+              message.id === assistantId
+                ? { ...message, status: "sent", isStreaming: false, content: accumulatedText }
+                : message
+            )
+          );
 
-        onMessage?.({
-          id: assistantId,
-          role: "assistant",
-          content: current,
-        } as Message);
+          onMessageRef.current?.({
+            id: assistantId,
+            role: "assistant",
+            content: accumulatedText,
+            status: "sent",
+            createdAt: Date.now(),
+          });
+        }
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
+        // Handle cancellation gracefully without emitting error messages
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
 
-        const errorMsg: Message = {
-          id: generateId(),
-          role: "assistant",
-          content: err instanceof Error ? err.message : "Something went wrong",
-          status: "error",
-          createdAt: Date.now(),
-        };
+        const error = err instanceof Error ? err : new Error(String(err));
+        onErrorRef.current?.(error);
 
-        setMessages((prev) => [...prev, errorMsg]);
-        onMessage?.(errorMsg);
+        // Update assistant message to display error state
+        setMessages((prevMessages) =>
+          prevMessages.map((message) =>
+            message.id === assistantId
+              ? {
+                  ...message,
+                  status: "error",
+                  isStreaming: false,
+                  content: error.message || "An unexpected error occurred while processing.",
+                  error: error.message,
+                }
+              : message
+          )
+        );
       } finally {
         setIsLoading(false);
         isSendingRef.current = false;
         setStreamingState({ isStreaming: false });
-        abortRef.current = null;
+        abortControllerRef.current = null;
       }
     },
-    [onMessage, isLoading, updateMessage],
+    [updateMessageContent]
   );
 
-  const clearChat = useCallback(() => {
-    setMessages([
-      {
-        id: "system-init",
-        role: "system",
-        content: systemContext || "AI Assistant initialized. Context loaded.",
-        createdAt: Date.now(),
-        status: "sent",
-      },
-    ]);
-  }, [systemContext]);
+  // --------------------------------------------------
+  // Chat Actions & Lifecycle Management
+  // --------------------------------------------------
 
-  const removeMessage = useCallback((id: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== id));
+  // Clears conversation back to initial state
+  const clearChat = useCallback(() => {
+    stopStreaming();
+    setMessages(createInitialMessages(systemContext));
+  }, [systemContext, stopStreaming]);
+
+  // Removes a single message by ID
+  const removeMessage = useCallback((messageId: string) => {
+    setMessages((prevMessages) => prevMessages.filter((message) => message.id !== messageId));
   }, []);
 
-  // cleanup on unmount
+  // Ensure any ongoing streaming request is aborted when the hook unmounts
   useEffect(() => {
     return () => {
-      abortRef.current?.abort();
+      abortControllerRef.current?.abort();
     };
   }, []);
 
@@ -235,5 +338,6 @@ export const useAiChat = (
     stopStreaming,
     clearChat,
     removeMessage,
+    setMessages,
   };
 };

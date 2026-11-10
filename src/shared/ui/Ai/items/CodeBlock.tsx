@@ -1,51 +1,120 @@
-import { useState, useCallback } from "react";
+// ----------------------------------------------------
+// Imports
+// ----------------------------------------------------
+
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { Check, Copy } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
+import { aiCodeBlockStyles } from "../styles/aiSidebar.styles";
+import type { CodeBlockProps } from "../types";
 
-interface CodeBlockProps {
-  language: string;
-  value: string;
-}
+// ----------------------------------------------------
+// Constants and Dynamic Configuration
+// ----------------------------------------------------
 
-export const CodeBlock = ({ language, value }: CodeBlockProps) => {
-  const [copied, setCopied] = useState(false); // copy state
+const DEFAULT_COPY_FEEDBACK_DURATION_MS = 2000;
+
+// ----------------------------------------------------
+// Component Implementation
+// ----------------------------------------------------
+
+export const CodeBlock: React.FC<CodeBlockProps> = ({
+  language = "code",
+  value,
+  showCopyButton = true,
+  styleConfig,
+  className,
+}) => {
+  const [copied, setCopied] = useState<boolean>(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // --------------------------------------------------
+  // Clipboard Copy & Feedback Management
+  // --------------------------------------------------
+
+  // Clean up any pending timeout when component unmounts
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const copyToClipboard = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(value); // async clipboard
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // reset state
-    } catch {
-      setCopied(false); // fail-safe
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(value);
+        setCopied(true);
+
+        if (copyTimeoutRef.current) {
+          clearTimeout(copyTimeoutRef.current);
+        }
+
+        copyTimeoutRef.current = setTimeout(() => {
+          setCopied(false);
+          copyTimeoutRef.current = null;
+        }, DEFAULT_COPY_FEEDBACK_DURATION_MS);
+      }
+    } catch (err) {
+      console.warn("[CodeBlock] Copy to clipboard failed:", err);
+      setCopied(false);
     }
   }, [value]);
 
+  const codeBlockStyles = styleConfig?.codeBlock;
+
   return (
-    <div className="group relative my-4 overflow-hidden rounded-xl border border-neutral-border/50 bg-[#1e1e1e]">
-      {/* header */}
-      <div className="flex items-center justify-between border-b border-neutral-border/30 bg-neutral-800 px-4 py-2 text-xs font-mono text-neutral-400">
-        <span className="opacity-80">{language}</span>
+    <div
+      className={cn(aiCodeBlockStyles.root, className)}
+      style={{
+        backgroundColor: codeBlockStyles?.bg,
+        borderColor: codeBlockStyles?.border,
+        borderRadius: codeBlockStyles?.radius,
+      }}
+    >
+      {/* Code Header: Language Badge and Copy Action */}
+      <div
+        className={aiCodeBlockStyles.header}
+        style={{
+          backgroundColor: codeBlockStyles?.headerBg,
+          borderColor: codeBlockStyles?.headerBorder,
+          color: codeBlockStyles?.headerText,
+        }}
+      >
+        <span className="uppercase text-[11px] font-semibold tracking-wider opacity-80">
+          {language}
+        </span>
 
-        <button
-          onClick={copyToClipboard}
-          aria-label="Copy code to clipboard" // accessibility
-          className="flex items-center gap-1.5 transition-colors hover:text-white focus:outline-none"
-        >
-          {copied ? (
-            <Check size={14} className="text-emerald-500" />
-          ) : (
-            <Copy size={14} />
-          )}
-
-          <span className={copied ? "text-emerald-500" : ""}>
-            {copied ? "Copied!" : "Copy code"}
-          </span>
-        </button>
+        {showCopyButton && (
+          <button
+            onClick={copyToClipboard}
+            type="button"
+            aria-label={copied ? "Code copied to clipboard" : "Copy code snippet"}
+            className={aiCodeBlockStyles.copyButton}
+          >
+            {copied ? (
+              <Check size={14} className="text-emerald-400" aria-hidden="true" />
+            ) : (
+              <Copy size={14} aria-hidden="true" />
+            )}
+            <span className={copied ? "text-emerald-400 font-medium" : ""}>
+              {copied ? "Copied" : "Copy"}
+            </span>
+          </button>
+        )}
       </div>
 
-      {/* code */}
-      <div className="overflow-x-auto p-5 scrollbar-thin scrollbar-thumb-neutral-700 scrollbar-track-transparent">
+      {/* Code Content Container */}
+      <div className={aiCodeBlockStyles.codePre}>
         <pre className="m-0">
-          <code className="whitespace-pre text-sm leading-relaxed font-mono text-neutral-300">
+          <code
+            className={aiCodeBlockStyles.code}
+            style={{
+              color: codeBlockStyles?.codeText,
+              fontSize: codeBlockStyles?.fontSize,
+            }}
+          >
             {value}
           </code>
         </pre>
